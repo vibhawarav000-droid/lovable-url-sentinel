@@ -41,8 +41,8 @@ interface NavItem {
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, requiredRole: ['super_admin', 'admin'] },
   { name: 'Monitors', href: '/monitors', icon: Monitor },
-  { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2, requiredRole: ['super_admin', 'admin'] },
-  { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4, requiredRole: ['super_admin', 'admin'] },
+  { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2 },
+  { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4 },
   { name: 'Maintenance', href: '/maintenance', icon: Wrench, requiredRole: ['super_admin', 'admin'] },
   { 
     name: 'Reports', 
