@@ -1,9 +1,9 @@
 import React from 'react';
-import { Bell, Search, Calendar } from 'lucide-react';
+import { Bell, Search, Calendar, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useAuth } from '@/contexts/AuthContext';
+import { UserProfileDropdown } from '@/components/layout/UserProfileDropdown';
 import { Badge } from '@/components/ui/badge';
 import {
   Popover,
@@ -19,6 +19,7 @@ interface HeaderProps {
   dateRange?: { from: Date; to: Date };
   onDateRangeChange?: (range: { from: Date; to: Date }) => void;
   showDatePicker?: boolean;
+  actions?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -27,10 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
   dateRange,
   onDateRangeChange,
   showDatePicker = false,
+  actions,
 }) => {
-  const { user } = useAuth();
-  const [searchOpen, setSearchOpen] = React.useState(false);
-
   return (
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
       <div className="flex items-center justify-between h-16 px-6">
@@ -41,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {/* Search */}
           <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -77,6 +76,11 @@ export const Header: React.FC<HeaderProps> = ({
             </Popover>
           )}
 
+          {/* Refresh */}
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -85,15 +89,14 @@ export const Header: React.FC<HeaderProps> = ({
             </Badge>
           </Button>
 
+          {/* Custom Actions */}
+          {actions}
+
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          {/* User Avatar */}
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-sm font-medium text-primary">
-              {user?.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          {/* User Profile Dropdown */}
+          <UserProfileDropdown />
         </div>
       </div>
     </header>

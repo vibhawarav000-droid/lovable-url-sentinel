@@ -14,6 +14,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Wrench,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
@@ -33,6 +35,8 @@ const navigation: NavItem[] = [
   { name: 'Monitors', href: '/monitors', icon: Monitor },
   { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2 },
   { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4 },
+  { name: 'Maintenance', href: '/maintenance', icon: Wrench },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Status Pages', href: '/status-pages', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Audit Logs', href: '/audit-logs', icon: Shield, requiredRole: ['super_admin', 'admin'] },
