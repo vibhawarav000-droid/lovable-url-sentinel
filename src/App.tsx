@@ -20,6 +20,7 @@ import UserManagement from "./pages/UserManagement";
 import OrganizationManagement from "./pages/OrganizationManagement";
 import Maintenance from "./pages/Maintenance";
 import Reports from "./pages/Reports";
+import URLPerformanceReport from "./pages/URLPerformanceReport";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -45,6 +46,7 @@ const App = () => (
                 <Route path="/alerts" element={<Alerts />} />
                 <Route path="/maintenance" element={<Maintenance />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/reports/performance" element={<URLPerformanceReport />} />
                 <Route path="/status-pages" element={<StatusPages />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/profile" element={<Profile />} />
