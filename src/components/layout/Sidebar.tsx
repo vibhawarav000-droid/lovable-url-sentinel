@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -14,13 +14,20 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Wrench,
   BarChart3,
+  LineChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface NavItem {
   name: string;
@@ -28,6 +35,7 @@ interface NavItem {
   icon: React.ElementType;
   badge?: number;
   requiredRole?: UserRole | UserRole[];
+  children?: { name: string; href: string; icon: React.ElementType }[];
 }
 
 const navigation: NavItem[] = [
@@ -36,7 +44,15 @@ const navigation: NavItem[] = [
   { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2 },
   { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4 },
   { name: 'Maintenance', href: '/maintenance', icon: Wrench },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { 
+    name: 'Reports', 
+    href: '/reports', 
+    icon: BarChart3,
+    children: [
+      { name: 'Uptime Report', href: '/reports', icon: BarChart3 },
+      { name: 'URL Performance', href: '/reports/performance', icon: LineChart },
+    ]
+  },
   { name: 'Status Pages', href: '/status-pages', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Audit Logs', href: '/audit-logs', icon: Shield, requiredRole: ['super_admin', 'admin'] },
@@ -52,11 +68,20 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const { user, logout, hasPermission } = useAuth();
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Reports']);
 
   const filteredNavigation = navigation.filter(item => {
     if (!item.requiredRole) return true;
     return hasPermission(item.requiredRole);
   });
+
+  const toggleExpanded = (name: string) => {
+    setExpandedItems(prev => 
+      prev.includes(name) 
+        ? prev.filter(item => item !== name)
+        : [...prev, name]
+    );
+  };
 
   return (
     <aside
@@ -90,8 +115,54 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         {/* Navigation */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
           {filteredNavigation.map((item) => {
-            const isActive = location.pathname === item.href;
+            const isActive = location.pathname === item.href || 
+                           (item.children && item.children.some(child => location.pathname === child.href));
+            const isExpanded = expandedItems.includes(item.name);
             
+            if (item.children && !collapsed) {
+              return (
+                <Collapsible
+                  key={item.name}
+                  open={isExpanded}
+                  onOpenChange={() => toggleExpanded(item.name)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className={cn(
+                        'sidebar-link w-full',
+                        isActive ? 'sidebar-link-active' : 'sidebar-link-inactive'
+                      )}
+                    >
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <ChevronDown className={cn(
+                        'h-4 w-4 transition-transform',
+                        isExpanded && 'rotate-180'
+                      )} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-4 mt-1 space-y-1">
+                    {item.children.map((child) => {
+                      const isChildActive = location.pathname === child.href;
+                      return (
+                        <Link
+                          key={child.name}
+                          to={child.href}
+                          className={cn(
+                            'sidebar-link text-sm',
+                            isChildActive ? 'sidebar-link-active' : 'sidebar-link-inactive'
+                          )}
+                        >
+                          <child.icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="flex-1">{child.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            }
+
             return (
               <Link
                 key={item.name}

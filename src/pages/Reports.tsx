@@ -20,8 +20,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   BarChart3, 
   Download, 
@@ -32,13 +30,14 @@ import {
   CheckCircle,
   AlertTriangle,
   Wrench,
-  Filter,
   Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, subDays, subMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from 'date-fns';
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 import { mockMonitors } from '@/data/mockData';
 import { DowntimeEvent, UptimeReport, Environment } from '@/types/monitor';
+import { DateRangePicker } from '@/components/reports/DateRangePicker';
 
 // Mock downtime events
 const mockDowntimeEvents: DowntimeEvent[] = [
@@ -117,6 +116,10 @@ const Reports: React.FC = () => {
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [environmentFilter, setEnvironmentFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
 
   const uptimeReports = useMemo(() => generateUptimeReports(), []);
   
@@ -218,7 +221,12 @@ const Reports: React.FC = () => {
               />
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+
               <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
                 <SelectTrigger className="w-36">
                   <Calendar className="h-4 w-4 mr-2" />
