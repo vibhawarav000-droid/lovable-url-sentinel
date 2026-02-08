@@ -2,32 +2,78 @@ import React, { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { MonitorCard } from '@/components/monitors/MonitorCard';
+import { AddMonitorDialog } from '@/components/monitors/AddMonitorDialog';
 import { mockMonitors, getDashboardStats } from '@/data/mockData';
-import { Monitor, Activity, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Monitor, Activity, AlertTriangle, Clock, CheckCircle, XCircle, Pause, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResponseTimeChart } from '@/components/monitors/ResponseTimeChart';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { Environment } from '@/types/monitor';
 
 const Dashboard: React.FC = () => {
   const stats = getDashboardStats();
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState({
     from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     to: new Date(),
   });
-  const [filter, setFilter] = useState<'all' | 'production' | 'uat'>('all');
+  const [filter, setFilter] = useState<'all' | Environment>('all');
+  const [monitors, setMonitors] = useState(mockMonitors);
 
-  const filteredMonitors = mockMonitors.filter(monitor => {
+  const filteredMonitors = monitors.filter(monitor => {
     if (filter === 'all') return true;
-    if (filter === 'production') return monitor.tags.includes('production');
-    if (filter === 'uat') return monitor.tags.includes('uat');
-    return true;
+    return monitor.environment === filter;
   });
 
   // Aggregate response time data for overview chart
-  const aggregateResponseData = mockMonitors
+  const aggregateResponseData = monitors
     .filter(m => m.status !== 'down')
     .slice(0, 5)
     .flatMap(m => m.responseHistory.slice(-24));
+
+  const handlePauseMonitor = (monitor: typeof monitors[0]) => {
+    setMonitors(prev => prev.map(m => 
+      m.id === monitor.id 
+        ? { ...m, status: 'paused' as const, isPaused: true } 
+        : m
+    ));
+    toast({
+      title: 'Monitor Paused',
+      description: `${monitor.name} has been paused.`,
+    });
+  };
+
+  const handleResumeMonitor = (monitor: typeof monitors[0]) => {
+    setMonitors(prev => prev.map(m => 
+      m.id === monitor.id 
+        ? { ...m, status: 'up' as const, isPaused: false } 
+        : m
+    ));
+    toast({
+      title: 'Monitor Resumed',
+      description: `${monitor.name} is now active.`,
+    });
+  };
+
+  const handleDeleteMonitor = (monitor: typeof monitors[0]) => {
+    if (window.confirm(`Are you sure you want to delete ${monitor.name}?`)) {
+      setMonitors(prev => prev.filter(m => m.id !== monitor.id));
+      toast({
+        title: 'Monitor Deleted',
+        description: `${monitor.name} has been deleted.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditMonitor = (monitor: typeof monitors[0]) => {
+    toast({
+      title: 'Edit Monitor',
+      description: `Opening edit form for ${monitor.name}`,
+    });
+  };
 
   return (
     <div className="min-h-screen">
@@ -41,7 +87,7 @@ const Dashboard: React.FC = () => {
 
       <div className="p-6 space-y-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatCard
             title="Total Monitors"
             value={stats.totalMonitors}
@@ -60,9 +106,35 @@ const Dashboard: React.FC = () => {
             variant={stats.monitorsDown > 0 ? 'danger' : 'default'}
           />
           <StatCard
+            title="Degraded"
+            value={stats.monitorsDegraded}
+            icon={AlertTriangle}
+            variant={stats.monitorsDegraded > 0 ? 'warning' : 'default'}
+          />
+          <StatCard
+            title="Paused"
+            value={stats.monitorsPaused}
+            icon={Pause}
+          />
+          <StatCard
+            title="Maintenance"
+            value={stats.monitorsMaintenance}
+            icon={Wrench}
+          />
+        </div>
+
+        {/* Avg Response Time */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <StatCard
             title="Avg Response Time"
             value={`${stats.avgResponseTime} ms`}
             icon={Clock}
+          />
+          <StatCard
+            title="Overall Uptime"
+            value={`${stats.overallUptime}%`}
+            icon={Activity}
+            variant="success"
           />
         </div>
 
@@ -80,7 +152,7 @@ const Dashboard: React.FC = () => {
                 Some services are experiencing issues. Click to view details.
               </p>
             </div>
-            <Button variant="destructive" size="sm">
+            <Button variant="destructive" size="sm" onClick={() => navigate('/incidents')}>
               View Incidents
             </Button>
           </div>
@@ -102,41 +174,49 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Monitor Filters */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="production">Production</TabsTrigger>
-              <TabsTrigger value="uat">UAT</TabsTrigger>
+              <TabsTrigger value="all">
+                All ({monitors.length})
+              </TabsTrigger>
+              <TabsTrigger value="production">
+                Production ({monitors.filter(m => m.environment === 'production').length})
+              </TabsTrigger>
+              <TabsTrigger value="uat">
+                UAT ({monitors.filter(m => m.environment === 'uat').length})
+              </TabsTrigger>
+              <TabsTrigger value="pre-prod">
+                Pre-Prod ({monitors.filter(m => m.environment === 'pre-prod').length})
+              </TabsTrigger>
+              <TabsTrigger value="internal">
+                Internal ({monitors.filter(m => m.environment === 'internal').length})
+              </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button variant="default" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Add Monitor
-          </Button>
+          <AddMonitorDialog />
         </div>
 
         {/* Monitors Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredMonitors.map((monitor) => (
-            <MonitorCard key={monitor.id} monitor={monitor} />
+            <MonitorCard 
+              key={monitor.id} 
+              monitor={monitor}
+              onEdit={handleEditMonitor}
+              onPause={handlePauseMonitor}
+              onResume={handleResumeMonitor}
+              onDelete={handleDeleteMonitor}
+            />
           ))}
         </div>
 
-        {/* Recent Incidents Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Response Time</h3>
-            <p className="text-sm text-muted-foreground">Waiting for response data...</p>
+        {filteredMonitors.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Monitor className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No monitors found for this environment.</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Incidents</h3>
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <AlertTriangle className="h-8 w-8 mb-2 opacity-50" />
-              <p className="text-sm">No incidents in specific time period</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

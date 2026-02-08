@@ -18,6 +18,9 @@ import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
 import UserManagement from "./pages/UserManagement";
 import OrganizationManagement from "./pages/OrganizationManagement";
+import Maintenance from "./pages/Maintenance";
+import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,8 +43,11 @@ const App = () => (
                 <Route path="/monitors" element={<Monitors />} />
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/alerts" element={<Alerts />} />
+                <Route path="/maintenance" element={<Maintenance />} />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/status-pages" element={<StatusPages />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/audit-logs" element={<AuditLogs />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/organization" element={<OrganizationManagement />} />

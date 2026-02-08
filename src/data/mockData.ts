@@ -1,4 +1,4 @@
-import { Monitor, Incident, Alert, StatusPage, AuditLog, Organization, DashboardStats } from '@/types/monitor';
+import { Monitor, Incident, Alert, StatusPage, AuditLog, Organization, DashboardStats, Environment } from '@/types/monitor';
 
 // Generate response history data
 const generateResponseHistory = (baseTime: number, variance: number, days: number = 30) => {
@@ -8,10 +8,12 @@ const generateResponseHistory = (baseTime: number, variance: number, days: numbe
   for (let i = days * 24; i >= 0; i--) {
     const date = new Date(now.getTime() - i * 60 * 60 * 1000);
     const status = Math.random() > 0.02 ? 'up' : 'down';
+    const httpCode = status === 'up' ? (Math.random() > 0.05 ? 200 : 301) : (Math.random() > 0.5 ? 503 : 500);
     history.push({
       timestamp: date.toISOString(),
       responseTime: status === 'up' ? Math.floor(baseTime + (Math.random() - 0.5) * variance) : 0,
       status: status as 'up' | 'down',
+      httpCode,
     });
   }
   
@@ -46,6 +48,19 @@ const generateUptimeHistory = (uptime: number, days: number = 90) => {
   return history;
 };
 
+const getEnvironment = (tags: string[]): Environment => {
+  if (tags.includes('production')) return 'production';
+  if (tags.includes('uat')) return 'uat';
+  if (tags.includes('staging')) return 'pre-prod';
+  return 'internal';
+};
+
+const getAccountName = (tags: string[]): string => {
+  if (tags.includes('dspace')) return 'DSpace Systems';
+  if (tags.includes('entrez')) return 'Entrez Inc';
+  return 'ABC Corp';
+};
+
 export const mockMonitors: Monitor[] = [
   {
     id: '1',
@@ -69,6 +84,10 @@ export const mockMonitors: Monitor[] = [
     alertCount: 0,
     responseHistory: generateResponseHistory(195, 80),
     uptimeHistory: generateUptimeHistory(99.9),
+    environment: 'production',
+    accountName: 'ABC Corp',
+    timezone: 'America/New_York',
+    httpCode: 200,
   },
   {
     id: '2',
@@ -92,6 +111,10 @@ export const mockMonitors: Monitor[] = [
     alertCount: 2,
     responseHistory: generateResponseHistory(276, 100),
     uptimeHistory: generateUptimeHistory(99.8),
+    environment: 'pre-prod',
+    accountName: 'ABC Corp',
+    timezone: 'America/New_York',
+    httpCode: 200,
   },
   {
     id: '3',
@@ -115,13 +138,17 @@ export const mockMonitors: Monitor[] = [
     alertCount: 1,
     responseHistory: generateResponseHistory(341, 150),
     uptimeHistory: generateUptimeHistory(99.5),
+    environment: 'uat',
+    accountName: 'ABC Corp',
+    timezone: 'UTC',
+    httpCode: 200,
   },
   {
     id: '4',
     name: 'ABCinfra4',
     url: 'https://abcinfra4.example.com',
     type: 'https',
-    status: 'up',
+    status: 'maintenance',
     uptime: 99.7,
     uptimeToday: 100,
     responseTime: 224,
@@ -138,6 +165,11 @@ export const mockMonitors: Monitor[] = [
     alertCount: 0,
     responseHistory: generateResponseHistory(224, 120),
     uptimeHistory: generateUptimeHistory(99.7),
+    environment: 'internal',
+    accountName: 'ABC Corp',
+    timezone: 'UTC',
+    httpCode: 200,
+    maintenanceId: 'maint-1',
   },
   {
     id: '5',
@@ -162,6 +194,11 @@ export const mockMonitors: Monitor[] = [
     alertCount: 5,
     responseHistory: generateResponseHistory(312, 100),
     uptimeHistory: generateUptimeHistory(98.2),
+    environment: 'production',
+    accountName: 'DSpace Systems',
+    timezone: 'America/Chicago',
+    httpCode: 503,
+    downtimeReason: 'Connection timeout - server not responding to health checks',
   },
   {
     id: '6',
@@ -185,6 +222,11 @@ export const mockMonitors: Monitor[] = [
     alertCount: 3,
     responseHistory: generateResponseHistory(423, 200),
     uptimeHistory: generateUptimeHistory(99.1),
+    environment: 'pre-prod',
+    accountName: 'ABC Corp',
+    timezone: 'Europe/London',
+    httpCode: 200,
+    downtimeReason: 'High response time - performance degradation detected',
   },
   {
     id: '7',
@@ -209,6 +251,11 @@ export const mockMonitors: Monitor[] = [
     alertCount: 8,
     responseHistory: generateResponseHistory(267, 90),
     uptimeHistory: generateUptimeHistory(97.5),
+    environment: 'uat',
+    accountName: 'DSpace Systems',
+    timezone: 'America/New_York',
+    httpCode: 500,
+    downtimeReason: 'Internal server error - database connection failed',
   },
   {
     id: '8',
@@ -232,13 +279,17 @@ export const mockMonitors: Monitor[] = [
     alertCount: 1,
     responseHistory: generateResponseHistory(289, 85),
     uptimeHistory: generateUptimeHistory(99.6),
+    environment: 'pre-prod',
+    accountName: 'DSpace Systems',
+    timezone: 'UTC',
+    httpCode: 200,
   },
   {
     id: '9',
     name: 'Dspace_Restapi',
     url: 'https://dspace-api.example.com/api',
     type: 'https',
-    status: 'up',
+    status: 'paused',
     uptime: 99.8,
     uptimeToday: 100,
     responseTime: 178,
@@ -255,6 +306,11 @@ export const mockMonitors: Monitor[] = [
     alertCount: 0,
     responseHistory: generateResponseHistory(178, 60),
     uptimeHistory: generateUptimeHistory(99.8),
+    environment: 'internal',
+    accountName: 'DSpace Systems',
+    timezone: 'America/New_York',
+    httpCode: 200,
+    isPaused: true,
   },
   {
     id: '10',
@@ -278,6 +334,11 @@ export const mockMonitors: Monitor[] = [
     alertCount: 4,
     responseHistory: generateResponseHistory(398, 180),
     uptimeHistory: generateUptimeHistory(99.2),
+    environment: 'production',
+    accountName: 'DSpace Systems',
+    timezone: 'America/Chicago',
+    httpCode: 200,
+    downtimeReason: 'Slow response - CPU utilization at 85%',
   },
   {
     id: '11',
@@ -301,6 +362,10 @@ export const mockMonitors: Monitor[] = [
     alertCount: 0,
     responseHistory: generateResponseHistory(172, 55),
     uptimeHistory: generateUptimeHistory(99.9),
+    environment: 'uat',
+    accountName: 'Entrez Inc',
+    timezone: 'Asia/Kolkata',
+    httpCode: 200,
   },
 ];
 
@@ -561,11 +626,13 @@ export const getDashboardStats = (): DashboardStats => {
   const up = monitors.filter(m => m.status === 'up').length;
   const down = monitors.filter(m => m.status === 'down').length;
   const degraded = monitors.filter(m => m.status === 'degraded').length;
+  const paused = monitors.filter(m => m.status === 'paused' || m.isPaused).length;
+  const maintenance = monitors.filter(m => m.status === 'maintenance').length;
   const activeIncidents = mockIncidents.filter(i => i.status !== 'resolved').length;
   
   const avgResponse = monitors
-    .filter(m => m.status !== 'down')
-    .reduce((sum, m) => sum + m.responseTime, 0) / (monitors.length - down) || 0;
+    .filter(m => m.status !== 'down' && m.status !== 'paused')
+    .reduce((sum, m) => sum + m.responseTime, 0) / (monitors.length - down - paused) || 0;
   
   const overallUptime = monitors.reduce((sum, m) => sum + m.uptime, 0) / monitors.length;
 
@@ -574,6 +641,8 @@ export const getDashboardStats = (): DashboardStats => {
     monitorsUp: up,
     monitorsDown: down,
     monitorsDegraded: degraded,
+    monitorsPaused: paused,
+    monitorsMaintenance: maintenance,
     avgResponseTime: Math.round(avgResponse),
     totalIncidents: mockIncidents.length,
     activeIncidents,

@@ -4,14 +4,26 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { UptimeBar } from './UptimeBar';
 import { ResponseTimeChart } from './ResponseTimeChart';
-import { Lock, Clock, AlertCircle, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { MonitorActionsMenu } from './MonitorActionsMenu';
+import { Lock, Clock, AlertCircle, CheckCircle, XCircle, AlertTriangle, Pause, Wrench } from 'lucide-react';
 
 interface MonitorCardProps {
   monitor: Monitor;
   onClick?: () => void;
+  onEdit?: (monitor: Monitor) => void;
+  onPause?: (monitor: Monitor) => void;
+  onResume?: (monitor: Monitor) => void;
+  onDelete?: (monitor: Monitor) => void;
 }
 
-export const MonitorCard: React.FC<MonitorCardProps> = ({ monitor, onClick }) => {
+export const MonitorCard: React.FC<MonitorCardProps> = ({ 
+  monitor, 
+  onClick,
+  onEdit,
+  onPause,
+  onResume,
+  onDelete,
+}) => {
   const getStatusIcon = () => {
     switch (monitor.status) {
       case 'up':
@@ -20,6 +32,10 @@ export const MonitorCard: React.FC<MonitorCardProps> = ({ monitor, onClick }) =>
         return <XCircle className="h-4 w-4 text-destructive" />;
       case 'degraded':
         return <AlertTriangle className="h-4 w-4 text-warning" />;
+      case 'paused':
+        return <Pause className="h-4 w-4 text-muted-foreground" />;
+      case 'maintenance':
+        return <Wrench className="h-4 w-4 text-primary" />;
       default:
         return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
@@ -33,6 +49,10 @@ export const MonitorCard: React.FC<MonitorCardProps> = ({ monitor, onClick }) =>
         return <Badge className="status-badge-down">Down</Badge>;
       case 'degraded':
         return <Badge className="status-badge-degraded">Degraded</Badge>;
+      case 'paused':
+        return <Badge variant="secondary">Paused</Badge>;
+      case 'maintenance':
+        return <Badge className="bg-primary/20 text-primary border-primary/30">Maintenance</Badge>;
       default:
         return <Badge variant="secondary">Paused</Badge>;
     }
@@ -47,27 +67,84 @@ export const MonitorCard: React.FC<MonitorCardProps> = ({ monitor, onClick }) =>
     return `${uptime.toFixed(2)}%`;
   };
 
+  const getHttpCodeBadge = () => {
+    if (!monitor.httpCode) return null;
+    const code = monitor.httpCode;
+    let variant = 'secondary';
+    
+    if (code >= 200 && code < 300) variant = 'success';
+    else if (code >= 300 && code < 400) variant = 'warning';
+    else if (code >= 400) variant = 'destructive';
+
+    return (
+      <Badge 
+        variant="outline" 
+        className={cn(
+          'text-xs',
+          code >= 200 && code < 300 && 'border-success/50 text-success',
+          code >= 300 && code < 400 && 'border-warning/50 text-warning',
+          code >= 400 && 'border-destructive/50 text-destructive'
+        )}
+      >
+        {code}
+      </Badge>
+    );
+  };
+
   return (
     <div
       className={cn(
-        'card-monitor cursor-pointer animate-fade-in',
-        monitor.status === 'down' && 'border-destructive/50 bg-destructive/5'
+        'card-monitor cursor-pointer animate-fade-in relative',
+        monitor.status === 'down' && 'border-destructive/50 bg-destructive/5',
+        monitor.status === 'maintenance' && 'border-primary/50 bg-primary/5'
       )}
       onClick={onClick}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {getStatusIcon()}
-          <div>
-            <h3 className="font-semibold text-foreground">{monitor.name}</h3>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground truncate">{monitor.name}</h3>
+              {getHttpCodeBadge()}
+            </div>
             <p className="text-xs text-muted-foreground truncate max-w-[200px]">
               {monitor.url}
             </p>
           </div>
         </div>
-        {getStatusBadge()}
+        <div className="flex items-center gap-2">
+          {getStatusBadge()}
+          <MonitorActionsMenu 
+            monitor={monitor}
+            onEdit={onEdit}
+            onPause={onPause}
+            onResume={onResume}
+            onDelete={onDelete}
+          />
+        </div>
       </div>
+
+      {/* Downtime Reason */}
+      {monitor.status === 'down' && monitor.downtimeReason && (
+        <div className="mb-4 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+          <p className="text-xs text-destructive flex items-center gap-2">
+            <AlertCircle className="h-3 w-3 flex-shrink-0" />
+            <span className="line-clamp-2">{monitor.downtimeReason}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Maintenance Banner */}
+      {monitor.status === 'maintenance' && (
+        <div className="mb-4 p-2 rounded-lg bg-primary/10 border border-primary/20">
+          <p className="text-xs text-primary flex items-center gap-2">
+            <Wrench className="h-3 w-3 flex-shrink-0" />
+            <span>Under scheduled maintenance</span>
+          </p>
+        </div>
+      )}
 
       {/* Uptime Bar */}
       <div className="mb-4">
@@ -104,9 +181,9 @@ export const MonitorCard: React.FC<MonitorCardProps> = ({ monitor, onClick }) =>
           </p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Avg Time</p>
-          <p className="text-sm font-semibold">
-            {formatResponseTime(monitor.avgResponseTime)}
+          <p className="text-xs text-muted-foreground mb-1">Env</p>
+          <p className="text-sm font-semibold capitalize">
+            {monitor.environment.replace('-', ' ')}
           </p>
         </div>
         <div>

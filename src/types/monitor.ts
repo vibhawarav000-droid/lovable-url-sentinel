@@ -1,7 +1,8 @@
-export type MonitorStatus = 'up' | 'down' | 'degraded' | 'paused';
+export type MonitorStatus = 'up' | 'down' | 'degraded' | 'paused' | 'maintenance';
 export type MonitorType = 'http' | 'https' | 'tcp' | 'ping' | 'dns';
 export type IncidentStatus = 'ongoing' | 'resolved' | 'acknowledged';
 export type IncidentSeverity = 'critical' | 'major' | 'minor';
+export type Environment = 'production' | 'uat' | 'pre-prod' | 'internal';
 
 export interface Monitor {
   id: string;
@@ -26,12 +27,32 @@ export interface Monitor {
   alertCount: number;
   responseHistory: ResponseDataPoint[];
   uptimeHistory: UptimeDataPoint[];
+  // New fields
+  environment: Environment;
+  accountName: string;
+  timezone: string;
+  httpCode?: number;
+  downtimeReason?: string;
+  isPaused?: boolean;
+  maintenanceId?: string;
+  // Advanced scheduling
+  expectedDowntime?: ScheduledWindow;
+  expectedUptime?: ScheduledWindow;
+}
+
+export interface ScheduledWindow {
+  enabled: boolean;
+  startTime: string; // HH:mm format
+  endTime: string;
+  daysOfWeek: number[]; // 0-6 (Sun-Sat)
+  timezone: string;
 }
 
 export interface ResponseDataPoint {
   timestamp: string;
   responseTime: number;
   status: MonitorStatus;
+  httpCode?: number;
 }
 
 export interface UptimeDataPoint {
@@ -69,7 +90,7 @@ export interface Alert {
   id: string;
   monitorId: string;
   monitorName: string;
-  type: 'down' | 'ssl_expiry' | 'response_time' | 'degraded';
+  type: 'down' | 'ssl_expiry' | 'response_time' | 'degraded' | 'expected_down' | 'expected_up' | 'maintenance';
   severity: 'critical' | 'warning' | 'info';
   message: string;
   createdAt: string;
@@ -122,8 +143,90 @@ export interface DashboardStats {
   monitorsUp: number;
   monitorsDown: number;
   monitorsDegraded: number;
+  monitorsPaused: number;
+  monitorsMaintenance: number;
   avgResponseTime: number;
   totalIncidents: number;
   activeIncidents: number;
   overallUptime: number;
+}
+
+// Maintenance Types
+export interface MaintenanceWindow {
+  id: string;
+  name: string;
+  description?: string;
+  accountName: string;
+  monitorIds: string[];
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  isRecurring: boolean;
+  recurrence?: RecurrencePattern;
+}
+
+export interface RecurrencePattern {
+  frequency: 'daily' | 'weekly' | 'monthly';
+  interval: number;
+  daysOfWeek?: number[];
+  endDate?: string;
+}
+
+// Report Types
+export interface DowntimeEvent {
+  id: string;
+  monitorId: string;
+  monitorName: string;
+  accountName: string;
+  environment: Environment;
+  startTime: string;
+  endTime?: string;
+  duration: number; // in minutes
+  httpCode?: number;
+  reason?: string;
+  notes?: string;
+  type: 'incident' | 'maintenance';
+  // For maintenance events
+  plannedDowntime?: number;
+  actualDowntime?: number;
+  uptimeDuringMaintenance?: number;
+}
+
+export interface UptimeReport {
+  monitorId: string;
+  monitorName: string;
+  accountName: string;
+  environment: Environment;
+  period: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  startDate: string;
+  endDate: string;
+  totalUptime: number;
+  plannedDowntime: number;
+  outageDowntime: number;
+  totalDowntimeMinutes: number;
+  remarks?: string;
+  rcaOfOutage?: string;
+}
+
+// Add Monitor Form Types
+export interface AddMonitorForm {
+  name: string;
+  url: string;
+  checkInterval: number;
+  environment: Environment;
+  timezone: string;
+  accountName: string;
+  timeout?: number;
+  // Advanced settings
+  enableScheduledDowntime?: boolean;
+  expectedDownStart?: string;
+  expectedDownEnd?: string;
+  enableScheduledUptime?: boolean;
+  expectedUpStart?: string;
+  expectedUpEnd?: string;
+  scheduledDays?: number[];
 }
