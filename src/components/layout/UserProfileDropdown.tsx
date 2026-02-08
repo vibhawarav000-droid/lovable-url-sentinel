@@ -77,11 +77,13 @@ export const UserProfileDropdown: React.FC = () => {
           <User className="h-4 w-4 mr-2" />
           My Profile
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
-          <Settings className="h-4 w-4 mr-2" />
-          Settings
-        </DropdownMenuItem>
         {hasPermission(['super_admin', 'admin']) && (
+          <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </DropdownMenuItem>
+        )}
+        {hasPermission('super_admin') && (
           <DropdownMenuItem onClick={() => navigate('/organization')} className="cursor-pointer">
             <Building2 className="h-4 w-4 mr-2" />
             Organization
