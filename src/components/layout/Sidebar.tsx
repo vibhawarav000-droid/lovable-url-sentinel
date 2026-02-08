@@ -39,22 +39,23 @@ interface NavItem {
 }
 
 const navigation: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, requiredRole: ['super_admin', 'admin'] },
   { name: 'Monitors', href: '/monitors', icon: Monitor },
-  { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2 },
-  { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4 },
-  { name: 'Maintenance', href: '/maintenance', icon: Wrench },
+  { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2, requiredRole: ['super_admin', 'admin'] },
+  { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4, requiredRole: ['super_admin', 'admin'] },
+  { name: 'Maintenance', href: '/maintenance', icon: Wrench, requiredRole: ['super_admin', 'admin'] },
   { 
     name: 'Reports', 
     href: '/reports', 
     icon: BarChart3,
+    requiredRole: ['super_admin', 'admin'],
     children: [
       { name: 'Uptime Report', href: '/reports', icon: BarChart3 },
       { name: 'URL Performance', href: '/reports/performance', icon: LineChart },
     ]
   },
-  { name: 'Status Pages', href: '/status-pages', icon: FileText },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Status Pages', href: '/status-pages', icon: FileText, requiredRole: ['super_admin', 'admin'] },
+  { name: 'Settings', href: '/settings', icon: Settings, requiredRole: ['super_admin', 'admin'] },
   { name: 'Audit Logs', href: '/audit-logs', icon: Shield, requiredRole: ['super_admin', 'admin'] },
   { name: 'User Management', href: '/users', icon: Users, requiredRole: ['super_admin', 'admin'] },
   { name: 'Org Management', href: '/organization', icon: Building2, requiredRole: 'super_admin' },
