@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiService } from '@/services/apiService';
 
 export type UserRole = 'super_admin' | 'admin' | 'viewer';
 
@@ -24,40 +25,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo
-const mockUsers: Record<string, User & { password: string }> = {
-  'superadmin@uptimehost.com': {
-    id: '1',
-    email: 'superadmin@uptimehost.com',
-    password: 'admin123',
-    name: 'John Super',
-    role: 'super_admin',
-    organizationId: 'org-1',
-    organizationName: 'UptimeHost Inc.',
-    createdAt: '2024-01-15',
-  },
-  'admin@uptimehost.com': {
-    id: '2',
-    email: 'admin@uptimehost.com',
-    password: 'admin123',
-    name: 'Jane Admin',
-    role: 'admin',
-    organizationId: 'org-1',
-    organizationName: 'UptimeHost Inc.',
-    createdAt: '2024-02-10',
-  },
-  'viewer@uptimehost.com': {
-    id: '3',
-    email: 'viewer@uptimehost.com',
-    password: 'viewer123',
-    name: 'Bob Viewer',
-    role: 'viewer',
-    organizationId: 'org-1',
-    organizationName: 'UptimeHost Inc.',
-    createdAt: '2024-03-05',
-  },
-};
-
 const roleHierarchy: Record<UserRole, number> = {
   super_admin: 3,
   admin: 2,
@@ -70,11 +37,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const storedUser = localStorage.getItem('uptimehost_user');
-    if (storedUser) {
+    const token = localStorage.getItem('uptimehost_token');
+    if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
+        apiService.setToken(token);
       } catch {
         localStorage.removeItem('uptimehost_user');
+        localStorage.removeItem('uptimehost_token');
       }
     }
     setIsLoading(false);
@@ -82,34 +52,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const mockUser = mockUsers[email.toLowerCase()];
-    
-    if (!mockUser || mockUser.password !== password) {
+    try {
+      const data = await apiService.login(email, password);
+      const userData: User = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role,
+        avatar: data.user.avatar,
+        organizationId: data.user.organizationId,
+        organizationName: data.user.organizationName,
+        createdAt: data.user.createdAt,
+      };
+      setUser(userData);
+      localStorage.setItem('uptimehost_user', JSON.stringify(userData));
+    } catch (err) {
+      throw err;
+    } finally {
       setIsLoading(false);
-      throw new Error('Invalid email or password');
     }
-
-    const { password: _, ...userWithoutPassword } = mockUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem('uptimehost_user', JSON.stringify(userWithoutPassword));
-    setIsLoading(false);
   };
 
   const logout = () => {
     setUser(null);
+    apiService.logout();
     localStorage.removeItem('uptimehost_user');
   };
 
   const hasPermission = (requiredRole: UserRole | UserRole[]): boolean => {
     if (!user) return false;
-    
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
     const userLevel = roleHierarchy[user.role];
-    
     return roles.some(role => userLevel >= roleHierarchy[role]);
   };
 
