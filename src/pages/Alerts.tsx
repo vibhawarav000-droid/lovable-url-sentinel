@@ -1,16 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/layout/Header';
 import { apiService } from '@/services/apiService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
-  Bell, BellOff, AlertTriangle, XCircle, Clock, Shield, Trash2, CheckCheck,
+  Bell, BellOff, AlertTriangle, XCircle, Clock, Shield, Trash2, CheckCheck, CalendarIcon, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
-import { Alert } from '@/types/monitor';
+import { formatDistanceToNow, format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Alerts: React.FC = () => {
@@ -18,25 +31,64 @@ const Alerts: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [accountFilter, setAccountFilter] = useState('');
+  const [monitorFilter, setMonitorFilter] = useState('');
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [monitors, setMonitors] = useState<{ id: string; name: string }[]>([]);
 
   const canManageAlerts = hasPermission(['super_admin', 'admin']);
 
   useEffect(() => {
-    loadAlerts();
+    loadFilters();
   }, []);
 
-  const loadAlerts = async () => {
+  useEffect(() => {
+    loadAlerts();
+  }, [search, dateRange, accountFilter, monitorFilter]);
+
+  const loadFilters = async () => {
     try {
-      const data = await apiService.getAlerts();
+      const data = await apiService.getAlertFilters();
+      setAccounts(data.accounts || []);
+      setMonitors(data.monitors || []);
+    } catch (err) {
+      console.error('Failed to load filters:', err);
+    }
+  };
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params: any = {};
+      if (search) params.search = search;
+      if (dateRange.from && dateRange.to) {
+        params.startDate = dateRange.from.toISOString();
+        params.endDate = dateRange.to.toISOString();
+      }
+      if (accountFilter) params.account = accountFilter;
+      if (monitorFilter) params.monitorId = monitorFilter;
+
+      const data = await apiService.getAlerts(params);
       setAlerts(data);
     } catch (err) {
       console.error('Failed to load alerts:', err);
     } finally {
       setLoading(false);
     }
+  }, [search, dateRange, accountFilter, monitorFilter]);
+
+  const unreadCount = alerts.filter(a => !a.read).length;
+
+  const clearFilters = () => {
+    setDateRange({});
+    setAccountFilter('');
+    setMonitorFilter('');
+    setSearch('');
   };
 
-  const unreadCount = alerts.filter(a => !a.read && !a.is_read).length;
+  const hasActiveFilters = !!dateRange.from || !!accountFilter || !!monitorFilter;
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -59,18 +111,31 @@ const Alerts: React.FC = () => {
   const handleMarkAsRead = async (id: string) => {
     try {
       await apiService.markAlertRead(id);
-      setAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true, is_read: true } : a));
+      setAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
     } catch (err) {
       console.error('Failed to mark alert as read:', err);
     }
   };
 
-  const handleMarkAllAsRead = () => {
-    alerts.forEach(a => { if (!a.read && !a.is_read) handleMarkAsRead(a.id); });
+  const handleMarkAllAsRead = async () => {
+    try {
+      await apiService.markAllAlertsRead();
+      setAlerts(prev => prev.map(a => ({ ...a, read: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
   };
 
   const handleToggleSelect = (id: string) => {
     setSelectedAlerts(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedAlerts.length === alerts.length) {
+      setSelectedAlerts([]);
+    } else {
+      setSelectedAlerts(alerts.map(a => a.id));
+    }
   };
 
   const handleDeleteSelected = () => {
@@ -78,7 +143,7 @@ const Alerts: React.FC = () => {
     setSelectedAlerts([]);
   };
 
-  if (loading) {
+  if (loading && alerts.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -88,10 +153,83 @@ const Alerts: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      <Header title="Alerts" subtitle="Monitor notifications and alerts" />
+      <Header
+        title="Alerts"
+        subtitle="Monitor notifications and alerts"
+        onSearch={setSearch}
+        onRefresh={loadAlerts}
+        notificationCount={unreadCount}
+      />
       <div className="p-6 space-y-6">
+        {/* Filters Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {dateRange.from && dateRange.to
+                  ? `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`
+                  : 'Date Range'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-popover" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange.from && dateRange.to ? { from: dateRange.from, to: dateRange.to } : undefined}
+                onSelect={(range) => {
+                  if (range?.from && range?.to) {
+                    setDateRange({ from: range.from, to: range.to });
+                  }
+                }}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Account Dropdown */}
+          <Select value={accountFilter} onValueChange={setAccountFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="All Accounts" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="all">All Accounts</SelectItem>
+              {accounts.map(acc => (
+                <SelectItem key={acc} value={acc}>{acc}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Monitor/URL Dropdown */}
+          <Select value={monitorFilter} onValueChange={setMonitorFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="All URLs" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="all">All URLs</SelectItem>
+              {monitors.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-muted-foreground">
+              <X className="h-3 w-3" /> Clear filters
+            </Button>
+          )}
+        </div>
+
+        {/* Actions Row */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {canManageAlerts && (
+              <Checkbox
+                checked={alerts.length > 0 && selectedAlerts.length === alerts.length}
+                onCheckedChange={handleSelectAll}
+              />
+            )}
             <Badge variant="outline" className="gap-1"><Bell className="h-3 w-3" />{unreadCount} unread</Badge>
           </div>
           {canManageAlerts && (
@@ -117,7 +255,7 @@ const Alerts: React.FC = () => {
         ) : (
           <div className="space-y-2">
             {alerts.map((alert) => {
-              const isRead = alert.read || alert.is_read;
+              const isRead = alert.read;
               return (
                 <Card
                   key={alert.id}

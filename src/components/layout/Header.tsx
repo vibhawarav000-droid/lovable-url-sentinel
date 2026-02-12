@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   title: string;
@@ -20,6 +21,9 @@ interface HeaderProps {
   onDateRangeChange?: (range: { from: Date; to: Date }) => void;
   showDatePicker?: boolean;
   actions?: React.ReactNode;
+  onRefresh?: () => void;
+  onSearch?: (value: string) => void;
+  notificationCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,9 +33,14 @@ export const Header: React.FC<HeaderProps> = ({
   onDateRangeChange,
   showDatePicker = false,
   actions,
+  onRefresh,
+  onSearch,
+  notificationCount = 0,
 }) => {
+  const navigate = useNavigate();
+
   return (
-    <header className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+    <header className="sticky top-0 z-30 bg-background border-b border-border">
       <div className="flex items-center justify-between h-16 px-6">
         <div>
           <h1 className="text-xl font-semibold">{title}</h1>
@@ -46,7 +55,8 @@ export const Header: React.FC<HeaderProps> = ({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search..."
-              className="w-64 pl-9 bg-muted/50"
+              className="w-64 pl-9"
+              onChange={(e) => onSearch?.(e.target.value)}
             />
           </div>
 
@@ -77,25 +87,30 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Refresh */}
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" onClick={() => onRefresh?.()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={() => navigate('/alerts')}
+          >
             <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs" variant="destructive">
-              4
-            </Badge>
+            {notificationCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs"
+              >
+                {notificationCount}
+              </Badge>
+            )}
           </Button>
 
-          {/* Custom Actions */}
           {actions}
-
-          {/* Theme Toggle */}
           <ThemeToggle />
-
-          {/* User Profile Dropdown */}
           <UserProfileDropdown />
         </div>
       </div>
