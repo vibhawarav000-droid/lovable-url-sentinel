@@ -101,12 +101,25 @@ class ApiService {
   }
 
   // Alerts
-  async getAlerts() {
-    return this.request<any[]>('/alerts');
+  async getAlerts(params?: { search?: string; startDate?: string; endDate?: string; account?: string; monitorId?: string }) {
+    const query = params ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString() : '';
+    return this.request<any[]>(`/alerts${query}`);
+  }
+
+  async getAlertFilters() {
+    return this.request<{ accounts: string[]; monitors: { id: string; name: string }[] }>('/alerts/filters');
+  }
+
+  async getUnreadAlertCount() {
+    return this.request<{ count: number }>('/alerts/unread-count');
   }
 
   async markAlertRead(id: string) {
     return this.request<any>(`/alerts/${id}/read`, { method: 'PUT' });
+  }
+
+  async markAllAlertsRead() {
+    return this.request<any>('/alerts/mark-all', { method: 'PUT' });
   }
 
   // Dashboard

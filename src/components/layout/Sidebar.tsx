@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -28,12 +28,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { apiService } from '@/services/apiService';
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ElementType;
-  badge?: number;
+  badgeKey?: string;
   requiredRole?: UserRole | UserRole[];
   children?: { name: string; href: string; icon: React.ElementType }[];
 }
@@ -41,8 +42,8 @@ interface NavItem {
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, requiredRole: ['super_admin', 'admin'] },
   { name: 'Monitors', href: '/monitors', icon: Monitor },
-  { name: 'Incidents', href: '/incidents', icon: AlertTriangle, badge: 2 },
-  { name: 'Alerts', href: '/alerts', icon: Bell, badge: 4 },
+  { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
+  { name: 'Alerts', href: '/alerts', icon: Bell, badgeKey: 'alerts' },
   { name: 'Maintenance', href: '/maintenance', icon: Wrench, requiredRole: ['super_admin', 'admin'] },
   { 
     name: 'Reports', 
@@ -70,6 +71,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const { user, logout, hasPermission } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(['Reports']);
+  const [unreadAlertCount, setUnreadAlertCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const data = await apiService.getUnreadAlertCount();
+        setUnreadAlertCount(data.count);
+      } catch (err) { /* ignore */ }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredNavigation = navigation.filter(item => {
     if (!item.requiredRole) return true;
@@ -177,9 +191,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                 {!collapsed && (
                   <>
                     <span className="flex-1">{item.name}</span>
-                    {item.badge && item.badge > 0 && (
+                    {item.badgeKey === 'alerts' && unreadAlertCount > 0 && (
                       <Badge variant="destructive" className="h-5 min-w-[20px] text-xs">
-                        {item.badge}
+                        {unreadAlertCount}
                       </Badge>
                     )}
                   </>
