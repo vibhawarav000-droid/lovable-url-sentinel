@@ -18,7 +18,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Update notification settings
-router.put('/notifications', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+router.put('/notifications', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const {
       email_enabled,
@@ -145,7 +145,7 @@ router.get('/integrations', authenticate, async (req, res) => {
 });
 
 // Connect an integration
-router.post('/integrations/:name/connect', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+router.post('/integrations/:name/connect', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { name } = req.params;
     const { config } = req.body;
@@ -172,7 +172,7 @@ router.post('/integrations/:name/connect', authenticate, authorize('admin', 'sup
 });
 
 // Disconnect an integration
-router.post('/integrations/:name/disconnect', authenticate, authorize('admin', 'super_admin'), async (req, res) => {
+router.post('/integrations/:name/disconnect', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { name } = req.params;
 
