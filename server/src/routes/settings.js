@@ -7,7 +7,7 @@ const { authorize } = require('../middleware/rbac');
 router.get('/', authenticate, async (req, res) => {
   try {
     const { rows } = await req.db.query(
-      'SELECT * FROM organization_settings WHERE organization_id = $1',
+      'SELECT * FROM settings WHERE organization_id = $1',
       [req.user.organization_id]
     );
     res.json(rows[0] || {});
@@ -17,7 +17,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Update notification settings
+// Update notification settings (Super Admin only)
 router.put('/notifications', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const {
@@ -26,25 +26,25 @@ router.put('/notifications', authenticate, authorize('super_admin'), async (req,
       sms_enabled,
       webhook_enabled,
       alert_threshold,
-      confirmation_period,
+      confirmation_checks,
     } = req.body;
 
     const { rows } = await req.db.query(
-      `INSERT INTO organization_settings (
-        organization_id, email_enabled, slack_enabled, sms_enabled,
-        webhook_enabled, alert_threshold, confirmation_period, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      `INSERT INTO settings (
+        id, organization_id, email_enabled, slack_enabled, sms_enabled,
+        webhook_enabled, alert_threshold, confirmation_checks, updated_at
+      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW())
       ON CONFLICT (organization_id)
       DO UPDATE SET
-        email_enabled = COALESCE($2, organization_settings.email_enabled),
-        slack_enabled = COALESCE($3, organization_settings.slack_enabled),
-        sms_enabled = COALESCE($4, organization_settings.sms_enabled),
-        webhook_enabled = COALESCE($5, organization_settings.webhook_enabled),
-        alert_threshold = COALESCE($6, organization_settings.alert_threshold),
-        confirmation_period = COALESCE($7, organization_settings.confirmation_period),
+        email_enabled = COALESCE($2, settings.email_enabled),
+        slack_enabled = COALESCE($3, settings.slack_enabled),
+        sms_enabled = COALESCE($4, settings.sms_enabled),
+        webhook_enabled = COALESCE($5, settings.webhook_enabled),
+        alert_threshold = COALESCE($6, settings.alert_threshold),
+        confirmation_checks = COALESCE($7, settings.confirmation_checks),
         updated_at = NOW()
       RETURNING *`,
-      [req.user.organization_id, email_enabled, slack_enabled, sms_enabled, webhook_enabled, alert_threshold, confirmation_period]
+      [req.user.organization_id, email_enabled, slack_enabled, sms_enabled, webhook_enabled, alert_threshold, confirmation_checks]
     );
 
     res.json(rows[0]);
@@ -54,23 +54,23 @@ router.put('/notifications', authenticate, authorize('super_admin'), async (req,
   }
 });
 
-// Update appearance settings
-router.put('/appearance', authenticate, async (req, res) => {
+// Update appearance settings (Super Admin only)
+router.put('/appearance', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    const { default_theme, timezone, date_format } = req.body;
+    const { theme, timezone, date_format } = req.body;
 
     const { rows } = await req.db.query(
-      `INSERT INTO organization_settings (
-        organization_id, default_theme, timezone, date_format, updated_at
-      ) VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO settings (
+        id, organization_id, theme, timezone, date_format, updated_at
+      ) VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())
       ON CONFLICT (organization_id)
       DO UPDATE SET
-        default_theme = COALESCE($2, organization_settings.default_theme),
-        timezone = COALESCE($3, organization_settings.timezone),
-        date_format = COALESCE($4, organization_settings.date_format),
+        theme = COALESCE($2, settings.theme),
+        timezone = COALESCE($3, settings.timezone),
+        date_format = COALESCE($4, settings.date_format),
         updated_at = NOW()
       RETURNING *`,
-      [req.user.organization_id, default_theme, timezone, date_format]
+      [req.user.organization_id, theme, timezone, date_format]
     );
 
     res.json(rows[0]);
@@ -80,7 +80,7 @@ router.put('/appearance', authenticate, async (req, res) => {
   }
 });
 
-// Update password
+// Update password (any authenticated user can change their own password)
 router.put('/password', authenticate, async (req, res) => {
   try {
     const { current_password, new_password, confirm_password } = req.body;
@@ -130,6 +130,30 @@ router.put('/password', authenticate, async (req, res) => {
   }
 });
 
+// Update security settings (Super Admin only)
+router.put('/security', authenticate, authorize('super_admin'), async (req, res) => {
+  try {
+    const { two_factor_enabled } = req.body;
+
+    const { rows } = await req.db.query(
+      `INSERT INTO settings (
+        id, organization_id, two_factor_enabled, updated_at
+      ) VALUES (gen_random_uuid(), $1, $2, NOW())
+      ON CONFLICT (organization_id)
+      DO UPDATE SET
+        two_factor_enabled = COALESCE($2, settings.two_factor_enabled),
+        updated_at = NOW()
+      RETURNING *`,
+      [req.user.organization_id, two_factor_enabled]
+    );
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error updating security settings:', err);
+    res.status(500).json({ error: 'Failed to update security settings' });
+  }
+});
+
 // Get integrations status
 router.get('/integrations', authenticate, async (req, res) => {
   try {
@@ -144,7 +168,7 @@ router.get('/integrations', authenticate, async (req, res) => {
   }
 });
 
-// Connect an integration
+// Connect an integration (Super Admin only)
 router.post('/integrations/:name/connect', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { name } = req.params;
@@ -171,7 +195,7 @@ router.post('/integrations/:name/connect', authenticate, authorize('super_admin'
   }
 });
 
-// Disconnect an integration
+// Disconnect an integration (Super Admin only)
 router.post('/integrations/:name/disconnect', authenticate, authorize('super_admin'), async (req, res) => {
   try {
     const { name } = req.params;
