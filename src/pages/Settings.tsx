@@ -28,7 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Settings: React.FC = () => {
   const { hasPermission } = useAuth();
-  const canManage = hasPermission(['super_admin', 'admin']);
+  const canManage = hasPermission(['super_admin']);
 
   return (
     <div className="min-h-screen">
